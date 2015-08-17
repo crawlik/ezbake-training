@@ -288,7 +288,8 @@ public class MongoDbServlet extends HttpServlet {
         String feedName = "tweet-ingest";
         try {
             logger.info("Initiating request to Content Publisher Service");
-            client = pool.getClient(ContentPublisherServiceConstants.SERVICE_NAME, ContentPublisher.Client.class);
+            client = pool.getClient(ContentPublisherServiceConstants.SERVICE_NAME, 
+                                    ContentPublisher.Client.class);
             PublishData data = new PublishData();
             Tweet tweet = new Tweet();
             tweet.setTimestamp(System.currentTimeMillis());
@@ -306,7 +307,8 @@ public class MongoDbServlet extends HttpServlet {
             data.setFeedname(feedName);
 
             SSRJSON ssrJson = new SSRJSON();
-            ssrJson.setJsonString(new TSerializer(new TSimpleJSONProtocol.Factory()).toString(tweet));
+            ssrJson.setJsonString(new TSerializer(
+                    new TSimpleJSONProtocol.Factory()).toString(tweet));
             SSR ssr = new SSR();
             ssr.setUri(entry.getUri());
             ssr.setTitle(String.valueOf(tweet.getId()));
@@ -316,6 +318,7 @@ public class MongoDbServlet extends HttpServlet {
                 Coordinate coordinate = new Coordinate();
                 coordinate.setLatitude(tweet.getGeoLocation().getLatitude());
                 coordinate.setLongitude(tweet.getGeoLocation().getLongitude());
+                ssr.setCoordinate(coordinate);
             }
             ssr.setResultDate(TimeUtil.convertToThriftDateTime(tweet.getTimestamp()));
             ssrJson.setSsr(ssr);

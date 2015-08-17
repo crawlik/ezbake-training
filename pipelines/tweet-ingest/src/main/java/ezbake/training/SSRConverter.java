@@ -47,10 +47,12 @@ public class SSRConverter implements IThriftConverter<TweetWithRaw, SSRJSON> {
             Coordinate coordinate = new Coordinate();
             coordinate.setLatitude(tweet.getGeoLocation().getLatitude());
             coordinate.setLongitude(tweet.getGeoLocation().getLongitude());
-        }
+            ssr.setCoordinate(coordinate);
+        }        
         ssr.setResultDate(TimeUtil.convertToThriftDateTime(tweet.getTimestamp()));
         ssrJson.setSsr(ssr);
-        ssrJson.setJsonString(new TSerializer(new TSimpleJSONProtocol.Factory()).toString(tweet));
+        ssrJson.setJsonString(new TSerializer(
+                new TSimpleJSONProtocol.Factory()).toString(tweet));
         return ssrJson;
     }
 }
