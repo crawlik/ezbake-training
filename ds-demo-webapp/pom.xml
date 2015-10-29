@@ -72,7 +72,11 @@
             <artifactId>ezbake-jdbc-driver</artifactId>
             <version>${ezbake.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>ezbake</groupId>
+            <artifactId>ezbake-groups-thrift</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- Internal dependencies -->
         <dependency>
             <groupId>ezbake.training</groupId>

@@ -27,9 +27,17 @@ import org.slf4j.LoggerFactory;
 
 import ezbake.configuration.EzConfiguration;
 import ezbake.data.common.ThriftClient;
+import ezbake.groups.thrift.EzGroups;
+import ezbake.groups.thrift.EzGroupsConstants;
+import ezbake.groups.thrift.Group;
+import ezbake.groups.thrift.User;
+import ezbake.groups.thrift.UserType;
 import ezbake.security.client.EzbakeSecurityClient;
+import ezbake.thrift.ThriftClientPool;
 import ezbake.thrift.ThriftUtils;
+import ezbake.base.thrift.AdvancedMarkings;
 import ezbake.base.thrift.EzSecurityToken;
+import ezbake.base.thrift.PlatformObjectVisibilities;
 import ezbake.base.thrift.Visibility;
 import ezbakehelpers.ezconfigurationhelpers.postgres.PostgresConfigurationHelper;
 
@@ -47,6 +55,7 @@ public class PostgresDatasetClient {
 	private static PostgresDatasetClient instance;
 	private EzbakeSecurityClient securityClient;
 	private Properties properties;
+	private ThriftClientPool pool;
 
 	private PostgresDatasetClient() {
 		createClient();
@@ -79,11 +88,15 @@ public class PostgresDatasetClient {
 					ps.setString(1, "%" + searchText + "%");
 					ResultSet rs = ps.executeQuery();
 					while (rs.next()) {
+						Visibility visibility = ThriftUtils.deserializeFromBase64(
+								Visibility.class,
+								rs.getString("visibility"));
+						AdvancedMarkings advanched = visibility.getAdvancedMarkings();
+						String am = (advanched != null) ? advanched.toString() : "N/A";
+
 						results.add(rs.getString("tweet")
-								+ ":"
-								+ ThriftUtils.deserializeFromBase64(
-										Visibility.class,
-										rs.getString("visibility")).getFormalVisibility());
+								+ ":" + visibility.getFormalVisibility()
+								+ ":" + am);
 					}
 				}
 			}
@@ -95,9 +108,10 @@ public class PostgresDatasetClient {
 		return results;
 	}
 
-	public void insertText(String text, String inputVisibility)
+	public void insertText(String text, String inputVisibility, String group)
 			throws TException, SQLException {
 
+		EzGroups.Client groupClient = null;
 		try {
 			EzSecurityToken token = securityClient.fetchTokenForProxiedUser();
 
@@ -119,6 +133,29 @@ public class PostgresDatasetClient {
 			Visibility visibility = new Visibility();
 			visibility.setFormalVisibility(inputVisibility);
 
+			groupClient = pool.getClient(
+					EzGroupsConstants.SERVICE_NAME, EzGroups.Client.class);
+			User user = groupClient.getUser(token, UserType.USER, token.getTokenPrincipal().getPrincipal());
+			System.out.println(user.toString());
+
+			try {
+				Group ezgroup = groupClient.getGroup(token, group); // EzbakeClient2
+				System.out.println("Group:" + group);
+				System.out.println(group.toString());
+				PlatformObjectVisibilities platformObjectVisibilities = new PlatformObjectVisibilities();
+			      platformObjectVisibilities.addToPlatformObjectWriteVisibility(ezgroup.getId());
+			      platformObjectVisibilities.addToPlatformObjectReadVisibility(ezgroup.getId());
+			    System.out.println(platformObjectVisibilities.toString());
+			    System.out.println(visibility.toString());
+			    AdvancedMarkings advancedMarkings = new AdvancedMarkings();
+			    advancedMarkings.setPlatformObjectVisibility(platformObjectVisibilities);
+	            visibility.setAdvancedMarkings(advancedMarkings);
+	            visibility.setAdvancedMarkingsIsSet(true);
+			} catch (Exception ex) {
+				System.out.println(ex.getMessage());
+				ex.printStackTrace();
+				throw ex;
+			}
 			try (Connection connection = helper.getEzPostgresConnection(token)) {
 				try (PreparedStatement ps = connection
 						.prepareStatement("insert into tweets(tweet, visibility) values(?,?)")) {
@@ -129,6 +166,9 @@ public class PostgresDatasetClient {
 			}
 			logger.info("Successful postgres client insert");
 		} finally {
+			if (groupClient != null) {
+				pool.returnToPool(groupClient);
+			}
 			assert true;
 		}
 	}
@@ -139,14 +179,14 @@ public class PostgresDatasetClient {
 			this.properties = configuration.getProperties();
 			logger.info("in createClient, configuration: {}", properties);
 			this.securityClient = new EzbakeSecurityClient(properties);
+			this.pool = new ThriftClientPool(configuration.getProperties());
 
 			EzSecurityToken token = securityClient.fetchTokenForProxiedUser();
 			PostgresConfigurationHelper helper = new PostgresConfigurationHelper(
 					this.properties);
 			try (Connection connection = helper.getEzPostgresConnection(token)) {
 				try (PreparedStatement ps = connection
-						.prepareStatement("DROP TABLE IF EXISTS tweets;"
-								+ "CREATE TABLE tweets(id SERIAL, tweet TEXT, visibility varchar(32768) default E'CwABAAAAAVUA')")) {
+						.prepareStatement("CREATE TABLE IF NOT EXISTS tweets(id SERIAL, tweet TEXT, visibility varchar(32768) default E'CwABAAAAAVUA')")) {
 					ps.execute();
 				}
 			}

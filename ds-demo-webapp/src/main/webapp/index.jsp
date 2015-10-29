@@ -56,6 +56,7 @@
             var content = $("#inputContent").val();
             var dataset = $(".dataset:checked").val();
             var visibility = $("#inputVisibility").val();
+            var group =  $(".ezgroup:checked").val();
 
             $("#insertResult").attr('class', 'text-success');
             $("#insertResult").html("Calling the dataset service, please wait...");
@@ -63,11 +64,13 @@
 
             $.ajax({
                 url: 'DatasetServlet', type: "POST", data: {
-                    action: 'insertText', content: content, dataset: dataset, visibility: visibility
+                    action: 'insertText', content: content, dataset: dataset, visibility: visibility,
+                    group: group
                 }, success: function (result) {
                     $("#insertResult").attr('class', 'text-success');
                     $("#insertResult").html(result);
                     $("#insertButton").prop("disabled", false);
+                }, error: function (xhr, status, result) {
                     var err = xhr.responseText;
                     console.log("ERROR in insert: " + err);
                     $("#insertResult").attr('class', 'text-danger');
@@ -81,10 +84,12 @@
         function search() {
             var searchText = $("#searchText").val();
             var dataset = $(".dataset:checked").val();
+            var group =  $(".ezgroup:checked").val();
 
             $.ajax({
                 url: 'DatasetServlet', type: "POST", data: {
-                    action: 'search', searchText: searchText, dataset: dataset
+                    action: 'search', searchText: searchText, dataset: dataset,
+                    group: group
                 }, success: function (result) {
                     $("#searchResult tbody").html(result);
                 }, error: function (xhr, status, result) {
@@ -115,6 +120,7 @@
         EzbakeSecurityClient securityClient = new EzbakeSecurityClient(new EzConfiguration().getProperties());
         out.println(securityClient.fetchTokenForProxiedUser().getTokenPrincipal().getPrincipal());
         out.println(securityClient.fetchTokenForProxiedUser().getAuthorizations());
+        out.println(new EzConfiguration().getProperties());
     } catch (Exception e) {
         e.printStackTrace();
     }%>
@@ -134,6 +140,10 @@
             <p><input id="dataset" type="radio" name="dataset" class="dataset" value="mongo"> Mongo</input></p>
             <p><input id="dataset" type="radio" name="dataset" class="dataset" value="elastic" checked> Elastic</input></p>
             <p><input id="dataset" type="radio" name="dataset" class="dataset" value="postgres"> Postgres</input></p>
+
+            <h3>Select Your Favorite Group:</h3>
+            <p><input id="ezgroup" type="radio" name="ezgroup" class="ezgroup" value="demo-group-a" checked> A</input></p>
+            <p><input id="ezgroup" type="radio" name="ezgroup" class="ezgroup" value="demo-group-b"> B</input></p>
 
             <label>Insert Text</label>
 
