@@ -30,8 +30,6 @@ import ezbake.data.common.ThriftClient;
 import ezbake.groups.thrift.EzGroups;
 import ezbake.groups.thrift.EzGroupsConstants;
 import ezbake.groups.thrift.Group;
-import ezbake.groups.thrift.User;
-import ezbake.groups.thrift.UserType;
 import ezbake.security.client.EzbakeSecurityClient;
 import ezbake.thrift.ThriftClientPool;
 import ezbake.thrift.ThriftUtils;
@@ -88,15 +86,16 @@ public class PostgresDatasetClient {
 					ps.setString(1, "%" + searchText + "%");
 					ResultSet rs = ps.executeQuery();
 					while (rs.next()) {
-						Visibility visibility = ThriftUtils.deserializeFromBase64(
-								Visibility.class,
-								rs.getString("visibility"));
-						AdvancedMarkings advanched = visibility.getAdvancedMarkings();
-						String am = (advanched != null) ? advanched.toString() : "N/A";
+						Visibility visibility = ThriftUtils
+								.deserializeFromBase64(Visibility.class,
+										rs.getString("visibility"));
+						AdvancedMarkings advanched = visibility
+								.getAdvancedMarkings();
+						String am = (advanched != null) ? advanched.toString()
+								: "N/A";
 
-						results.add(rs.getString("tweet")
-								+ ":" + visibility.getFormalVisibility()
-								+ ":" + am);
+						results.add(rs.getString("tweet") + ":"
+								+ visibility.getFormalVisibility() + ":" + am);
 					}
 				}
 			}
@@ -133,26 +132,27 @@ public class PostgresDatasetClient {
 			Visibility visibility = new Visibility();
 			visibility.setFormalVisibility(inputVisibility);
 
-			groupClient = pool.getClient(
-					EzGroupsConstants.SERVICE_NAME, EzGroups.Client.class);
-			User user = groupClient.getUser(token, UserType.USER, token.getTokenPrincipal().getPrincipal());
-			System.out.println(user.toString());
+			groupClient = pool.getClient(EzGroupsConstants.SERVICE_NAME,
+					EzGroups.Client.class);
 
 			try {
-				Group ezgroup = groupClient.getGroup(token, group); // EzbakeClient2
-				System.out.println("Group:" + group);
-				System.out.println(group.toString());
+				Group ezgroup;
+				try {
+					ezgroup = groupClient.getGroup(token, group);
+				} catch (org.apache.thrift.transport.TTransportException e) {
+					throw new TException("User is not part of : " + group);
+				}
 				PlatformObjectVisibilities platformObjectVisibilities = new PlatformObjectVisibilities();
-			      platformObjectVisibilities.addToPlatformObjectWriteVisibility(ezgroup.getId());
-			      platformObjectVisibilities.addToPlatformObjectReadVisibility(ezgroup.getId());
-			    System.out.println(platformObjectVisibilities.toString());
-			    System.out.println(visibility.toString());
-			    AdvancedMarkings advancedMarkings = new AdvancedMarkings();
-			    advancedMarkings.setPlatformObjectVisibility(platformObjectVisibilities);
-	            visibility.setAdvancedMarkings(advancedMarkings);
-	            visibility.setAdvancedMarkingsIsSet(true);
+				platformObjectVisibilities
+						.addToPlatformObjectWriteVisibility(ezgroup.getId());
+				platformObjectVisibilities
+						.addToPlatformObjectReadVisibility(ezgroup.getId());
+				AdvancedMarkings advancedMarkings = new AdvancedMarkings();
+				advancedMarkings
+						.setPlatformObjectVisibility(platformObjectVisibilities);
+				visibility.setAdvancedMarkings(advancedMarkings);
+				visibility.setAdvancedMarkingsIsSet(true);
 			} catch (Exception ex) {
-				System.out.println(ex.getMessage());
 				ex.printStackTrace();
 				throw ex;
 			}

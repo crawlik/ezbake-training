@@ -36,8 +36,6 @@ import ezbake.data.elastic.thrift.Query;
 import ezbake.groups.thrift.EzGroups;
 import ezbake.groups.thrift.EzGroupsConstants;
 import ezbake.groups.thrift.Group;
-import ezbake.groups.thrift.User;
-import ezbake.groups.thrift.UserType;
 import ezbake.security.client.EzbakeSecurityClient;
 import ezbake.thrift.ThriftClientPool;
 import ezbake.base.thrift.AdvancedMarkings;
@@ -116,7 +114,6 @@ public class ElasticDatasetClient {
 
 		try {
 			EzSecurityToken token = securityClient.fetchTokenForProxiedUser();
-			System.out.println("Token:" + token);
 			elasticClient = getThriftClient();
 
 			Tweet tweet = new Tweet();
@@ -142,29 +139,24 @@ public class ElasticDatasetClient {
 
 			groupClient = pool.getClient(EzGroupsConstants.SERVICE_NAME,
 					EzGroups.Client.class);
-			System.out.println(groupClient.toString());
-			User user = groupClient.getUser(token, UserType.USER, token
-					.getTokenPrincipal().getPrincipal());
-			System.out.println(user.toString());
 			try {
-				System.out.println("Input Group:" + group);
-				Group ezgroup = groupClient.getGroup(token, group);
-				System.out.println("Group:" + ezgroup);
-				System.out.println(ezgroup.toString());
+				Group ezgroup;
+				try {
+					ezgroup = groupClient.getGroup(token, group);
+				} catch(org.apache.thrift.transport.TTransportException e) {
+					throw new TException("User is not part of : " + group); 
+				}
 				PlatformObjectVisibilities platformObjectVisibilities = new PlatformObjectVisibilities();
 				platformObjectVisibilities
 						.addToPlatformObjectWriteVisibility(ezgroup.getId());
 				platformObjectVisibilities
 						.addToPlatformObjectReadVisibility(ezgroup.getId());
-				System.out.println(platformObjectVisibilities.toString());
-				System.out.println(visibility.toString());
 				AdvancedMarkings advancedMarkings = new AdvancedMarkings();
 				advancedMarkings
 						.setPlatformObjectVisibility(platformObjectVisibilities);
 				visibility.setAdvancedMarkings(advancedMarkings);
 				visibility.setAdvancedMarkingsIsSet(true);
-			} catch (Exception ex) {
-				System.out.println(ex.getMessage());
+			} catch (TException ex) {
 				ex.printStackTrace();
 				throw ex;
 			}

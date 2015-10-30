@@ -233,7 +233,6 @@ public class DatasetServlet extends HttpServlet {
 			}
 			case "elastic":
 			{
-				System.out.println("Input:" + group);
 				ElasticDatasetClient client = ElasticDatasetClient.getInstance();
 				client.insertText(textContent, visibility, group);
 				break;

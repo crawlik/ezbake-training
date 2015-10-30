@@ -120,7 +120,6 @@
         EzbakeSecurityClient securityClient = new EzbakeSecurityClient(new EzConfiguration().getProperties());
         out.println(securityClient.fetchTokenForProxiedUser().getTokenPrincipal().getPrincipal());
         out.println(securityClient.fetchTokenForProxiedUser().getAuthorizations());
-        out.println(new EzConfiguration().getProperties());
     } catch (Exception e) {
         e.printStackTrace();
     }%>

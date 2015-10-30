@@ -32,8 +32,6 @@ import ezbake.data.mongo.thrift.MongoEzbakeDocument;
 import ezbake.groups.thrift.EzGroups;
 import ezbake.groups.thrift.EzGroupsConstants;
 import ezbake.groups.thrift.Group;
-import ezbake.groups.thrift.User;
-import ezbake.groups.thrift.UserType;
 import ezbake.security.client.EzbakeSecurityClient;
 import ezbake.thrift.ThriftClientPool;
 import ezbake.base.thrift.AdvancedMarkings;
@@ -171,8 +169,8 @@ public class MongoDatasetClient {
 		return results;
 	}
 
-	public void insertText(String collectionName, String text, String inputVisibility, String group)
-			throws TException {
+	public void insertText(String collectionName, String text,
+			String inputVisibility, String group) throws TException {
 		EzMongo.Client c = null;
 		EzGroups.Client groupClient = null;
 
@@ -196,26 +194,27 @@ public class MongoDatasetClient {
 
 			Visibility visibility = new Visibility();
 
-			groupClient = pool.getClient(
-					EzGroupsConstants.SERVICE_NAME, EzGroups.Client.class);
-			User user = groupClient.getUser(token, UserType.USER, token.getTokenPrincipal().getPrincipal());
-			System.out.println(user.toString());
+			groupClient = pool.getClient(EzGroupsConstants.SERVICE_NAME,
+					EzGroups.Client.class);
 
 			try {
-				Group ezgroup = groupClient.getGroup(token, group);
-				System.out.println("Group:" + group);
-				System.out.println(group.toString());
+				Group ezgroup;
+				try {
+					ezgroup = groupClient.getGroup(token, group);
+				} catch (org.apache.thrift.transport.TTransportException e) {
+					throw new TException("User is not part of : " + group);
+				}
 				PlatformObjectVisibilities platformObjectVisibilities = new PlatformObjectVisibilities();
-			      platformObjectVisibilities.addToPlatformObjectWriteVisibility(ezgroup.getId());
-			      platformObjectVisibilities.addToPlatformObjectReadVisibility(ezgroup.getId());
-			    System.out.println(platformObjectVisibilities.toString());
-			    System.out.println(visibility.toString());
-			    AdvancedMarkings advancedMarkings = new AdvancedMarkings();
-			    advancedMarkings.setPlatformObjectVisibility(platformObjectVisibilities);
-	            visibility.setAdvancedMarkings(advancedMarkings);
-	            visibility.setAdvancedMarkingsIsSet(true);
+				platformObjectVisibilities
+						.addToPlatformObjectWriteVisibility(ezgroup.getId());
+				platformObjectVisibilities
+						.addToPlatformObjectReadVisibility(ezgroup.getId());
+				AdvancedMarkings advancedMarkings = new AdvancedMarkings();
+				advancedMarkings
+						.setPlatformObjectVisibility(platformObjectVisibilities);
+				visibility.setAdvancedMarkings(advancedMarkings);
+				visibility.setAdvancedMarkingsIsSet(true);
 			} catch (Exception ex) {
-				System.out.println(ex.getMessage());
 				ex.printStackTrace();
 				throw ex;
 			}
