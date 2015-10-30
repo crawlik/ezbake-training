@@ -29,9 +29,14 @@ import ezbake.configuration.constants.EzBakePropertyConstants;
 import ezbake.data.common.ThriftClient;
 import ezbake.data.mongo.thrift.EzMongo;
 import ezbake.data.mongo.thrift.MongoEzbakeDocument;
+import ezbake.groups.thrift.EzGroups;
+import ezbake.groups.thrift.EzGroupsConstants;
+import ezbake.groups.thrift.Group;
 import ezbake.security.client.EzbakeSecurityClient;
 import ezbake.thrift.ThriftClientPool;
+import ezbake.base.thrift.AdvancedMarkings;
 import ezbake.base.thrift.EzSecurityToken;
+import ezbake.base.thrift.PlatformObjectVisibilities;
 import ezbake.base.thrift.Visibility;
 
 public class MongoDatasetClient {
@@ -164,9 +169,10 @@ public class MongoDatasetClient {
 		return results;
 	}
 
-	public void insertText(String collectionName, String text, String inputVisibility)
-			throws TException {
+	public void insertText(String collectionName, String text,
+			String inputVisibility, String group) throws TException {
 		EzMongo.Client c = null;
+		EzGroups.Client groupClient = null;
 
 		try {
 			EzSecurityToken token = securityClient.fetchTokenForProxiedUser();
@@ -187,12 +193,42 @@ public class MongoDatasetClient {
 			String jsonContent = serializer.toString(tweet);
 
 			Visibility visibility = new Visibility();
+
+			groupClient = pool.getClient(EzGroupsConstants.SERVICE_NAME,
+					EzGroups.Client.class);
+
+			try {
+				Group ezgroup;
+				try {
+					ezgroup = groupClient.getGroup(token, group);
+				} catch (org.apache.thrift.transport.TTransportException e) {
+					throw new TException("User is not part of : " + group);
+				}
+				PlatformObjectVisibilities platformObjectVisibilities = new PlatformObjectVisibilities();
+				platformObjectVisibilities
+						.addToPlatformObjectWriteVisibility(ezgroup.getId());
+				platformObjectVisibilities
+						.addToPlatformObjectReadVisibility(ezgroup.getId());
+				AdvancedMarkings advancedMarkings = new AdvancedMarkings();
+				advancedMarkings
+						.setPlatformObjectVisibility(platformObjectVisibilities);
+				visibility.setAdvancedMarkings(advancedMarkings);
+				visibility.setAdvancedMarkingsIsSet(true);
+			} catch (Exception ex) {
+				ex.printStackTrace();
+				throw ex;
+			}
+
+			visibility.setFormalVisibility(inputVisibility);
 			String result = c.insert(collectionName, new MongoEzbakeDocument(
-					jsonContent, visibility.setFormalVisibility(inputVisibility)), token);
+					jsonContent, visibility), token);
 			logger.info("Successful mongo client insert {}", result);
 		} finally {
 			if (c != null) {
 				pool.returnToPool(c);
+			}
+			if (groupClient != null) {
+				pool.returnToPool(groupClient);
 			}
 		}
 	}

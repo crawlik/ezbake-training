@@ -33,10 +33,14 @@ import ezbake.data.elastic.thrift.EzElastic;
 import ezbake.data.elastic.thrift.Document;
 import ezbake.data.elastic.thrift.SearchResult;
 import ezbake.data.elastic.thrift.Query;
-
+import ezbake.groups.thrift.EzGroups;
+import ezbake.groups.thrift.EzGroupsConstants;
+import ezbake.groups.thrift.Group;
 import ezbake.security.client.EzbakeSecurityClient;
 import ezbake.thrift.ThriftClientPool;
+import ezbake.base.thrift.AdvancedMarkings;
 import ezbake.base.thrift.EzSecurityToken;
+import ezbake.base.thrift.PlatformObjectVisibilities;
 import ezbake.base.thrift.Visibility;
 
 import org.elasticsearch.index.query.QueryBuilders;
@@ -75,38 +79,42 @@ public class ElasticDatasetClient {
 
 	public List<String> searchText(String collectionName, String searchText)
 			throws TException {
-		EzElastic.Client c = null;
+		EzElastic.Client elasticClient = null;
 		List<String> results = new ArrayList<String>();
 
 		try {
 			EzSecurityToken token = securityClient.fetchTokenForProxiedUser();
 
-			c = getThriftClient();
+			elasticClient = getThriftClient();
 
 			logger.info("Query EzElastic text for {}...", searchText);
-			final SearchResult result = c.query(new Query(QueryBuilders
-					.termQuery("text", searchText).toString()), token);
+			final SearchResult result = elasticClient.query(new Query(
+					QueryBuilders.termQuery("text", searchText).toString()),
+					token);
 			for (Document doc : result.getMatchingDocuments()) {
-				results.add(doc.get_jsonObject() + ":" + doc.visibility.getFormalVisibility());
+				AdvancedMarkings advanched = doc.visibility
+						.getAdvancedMarkings();
+				String am = (advanched != null) ? advanched.toString() : "N/A";
+				results.add(doc.get_jsonObject() + ":"
+						+ doc.visibility.getFormalVisibility() + ":" + am);
 			}
 			logger.info("Text search results: {}", results);
 		} finally {
-			if (c != null) {
-				pool.returnToPool(c);
+			if (elasticClient != null) {
+				pool.returnToPool(elasticClient);
 			}
 		}
 		return results;
 	}
 
-	public void insertText(String collectionName, String text, String inputVisibility)
+	public void insertText(String text, String inputVisibility, String group)
 			throws TException {
-		EzElastic.Client c = null;
+		EzElastic.Client elasticClient = null;
+		EzGroups.Client groupClient = null;
 
 		try {
 			EzSecurityToken token = securityClient.fetchTokenForProxiedUser();
-			c = getThriftClient();
-			logger.info("Calling EzElastic insertText for {}...",
-					collectionName);
+			elasticClient = getThriftClient();
 
 			Tweet tweet = new Tweet();
 			tweet.setTimestamp(System.currentTimeMillis());
@@ -127,14 +135,42 @@ public class ElasticDatasetClient {
 			doc.set_jsonObject(jsonContent);
 
 			Visibility visibility = new Visibility();
-			doc.setVisibility(visibility.setFormalVisibility(inputVisibility));
+			visibility.setFormalVisibility(inputVisibility);
 
-			c.put(doc, token);
+			groupClient = pool.getClient(EzGroupsConstants.SERVICE_NAME,
+					EzGroups.Client.class);
+			try {
+				Group ezgroup;
+				try {
+					ezgroup = groupClient.getGroup(token, group);
+				} catch(org.apache.thrift.transport.TTransportException e) {
+					throw new TException("User is not part of : " + group); 
+				}
+				PlatformObjectVisibilities platformObjectVisibilities = new PlatformObjectVisibilities();
+				platformObjectVisibilities
+						.addToPlatformObjectWriteVisibility(ezgroup.getId());
+				platformObjectVisibilities
+						.addToPlatformObjectReadVisibility(ezgroup.getId());
+				AdvancedMarkings advancedMarkings = new AdvancedMarkings();
+				advancedMarkings
+						.setPlatformObjectVisibility(platformObjectVisibilities);
+				visibility.setAdvancedMarkings(advancedMarkings);
+				visibility.setAdvancedMarkingsIsSet(true);
+			} catch (TException ex) {
+				ex.printStackTrace();
+				throw ex;
+			}
+
+			doc.setVisibility(visibility);
+			elasticClient.put(doc, token);
 
 			logger.info("Successful elastic client insert");
 		} finally {
-			if (c != null) {
-				pool.returnToPool(c);
+			if (elasticClient != null) {
+				pool.returnToPool(elasticClient);
+			}
+			if (groupClient != null) {
+				pool.returnToPool(groupClient);
 			}
 		}
 	}

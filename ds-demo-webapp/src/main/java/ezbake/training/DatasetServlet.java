@@ -218,6 +218,7 @@ public class DatasetServlet extends HttpServlet {
 		String textContent = request.getParameter("content");
 		String dataset = request.getParameter("dataset");
 		String visibility = request.getParameter("visibility");
+		String group = request.getParameter("group");
 		String result = null;
 
 		visibility = visibility.isEmpty() ? "U" : visibility;
@@ -227,19 +228,19 @@ public class DatasetServlet extends HttpServlet {
 			case "mongo":
 			{
 				MongoDatasetClient client = MongoDatasetClient.getInstance();
-				client.insertText(COLLECTION_NAME, textContent, visibility);
+				client.insertText(COLLECTION_NAME, textContent, visibility, group);
 				break;
 			}
 			case "elastic":
 			{
 				ElasticDatasetClient client = ElasticDatasetClient.getInstance();
-				client.insertText(COLLECTION_NAME, textContent, visibility);
+				client.insertText(textContent, visibility, group);
 				break;
 			}
 			case "postgres":
 			{
 				PostgresDatasetClient client = PostgresDatasetClient.getInstance();
-				client.insertText(textContent, visibility);
+				client.insertText(textContent, visibility, group);
 				break;
 			}
 			default:
@@ -250,11 +251,9 @@ public class DatasetServlet extends HttpServlet {
 			result = "Successfully added the text (" + textContent + ") to "
 					+ dataset;
 		} catch (Exception e) {
-			result = "Failed to insert data: " + e.getMessage();
+			result = "Failed to insert data: " + e.toString();
 			logger.error("Failed to insert data", e);
 			response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-			// } finally {
-			// //pool.returnToPool(client);
 		}
 
 		return result;
