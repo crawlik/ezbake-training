@@ -138,7 +138,10 @@ public class PostgresDatasetClient {
 			try {
 				Group ezgroup;
 				try {
-					ezgroup = groupClient.getGroup(token, group);
+					EzSecurityToken groupsToken = securityClient
+							.fetchTokenForProxiedUser(pool
+									.getSecurityId(EzGroupsConstants.SERVICE_NAME));
+					ezgroup = groupClient.getGroup(groupsToken, group);
 				} catch (org.apache.thrift.transport.TTransportException e) {
 					throw new TException("User is not part of : " + group);
 				}
