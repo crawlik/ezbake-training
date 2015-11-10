@@ -141,7 +141,8 @@
             <p><input id="dataset" type="radio" name="dataset" class="dataset" value="postgres"> Postgres</input></p>
 
             <h3>Select Your Favorite Group:</h3>
-            <p><input id="ezgroup" type="radio" name="ezgroup" class="ezgroup" value="demo-group-a" checked> A</input></p>
+            <p><input id="ezgroup" type="radio" name="ezgroup" class="ezgroup" value="none" checked> NONE</input></p>
+            <p><input id="ezgroup" type="radio" name="ezgroup" class="ezgroup" value="demo-group-a"> A</input></p>
             <p><input id="ezgroup" type="radio" name="ezgroup" class="ezgroup" value="demo-group-b"> B</input></p>
 
             <label>Insert Text</label>

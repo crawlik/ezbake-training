@@ -132,32 +132,34 @@ public class PostgresDatasetClient {
 			Visibility visibility = new Visibility();
 			visibility.setFormalVisibility(inputVisibility);
 
-			groupClient = pool.getClient(EzGroupsConstants.SERVICE_NAME,
-					EzGroups.Client.class);
+			if (!group.equals("none")) {
+				groupClient = pool.getClient(EzGroupsConstants.SERVICE_NAME,
+						EzGroups.Client.class);
 
-			try {
-				Group ezgroup;
 				try {
-					EzSecurityToken groupsToken = securityClient
-							.fetchTokenForProxiedUser(pool
-									.getSecurityId(EzGroupsConstants.SERVICE_NAME));
-					ezgroup = groupClient.getGroup(groupsToken, group);
-				} catch (org.apache.thrift.transport.TTransportException e) {
-					throw new TException("User is not part of : " + group);
+					Group ezgroup;
+					try {
+						EzSecurityToken groupsToken = securityClient
+								.fetchTokenForProxiedUser(pool
+										.getSecurityId(EzGroupsConstants.SERVICE_NAME));
+						ezgroup = groupClient.getGroup(groupsToken, group);
+					} catch (org.apache.thrift.transport.TTransportException e) {
+						throw new TException("User is not part of : " + group);
+					}
+					PlatformObjectVisibilities platformObjectVisibilities = new PlatformObjectVisibilities();
+					platformObjectVisibilities
+							.addToPlatformObjectWriteVisibility(ezgroup.getId());
+					platformObjectVisibilities
+							.addToPlatformObjectReadVisibility(ezgroup.getId());
+					AdvancedMarkings advancedMarkings = new AdvancedMarkings();
+					advancedMarkings
+							.setPlatformObjectVisibility(platformObjectVisibilities);
+					visibility.setAdvancedMarkings(advancedMarkings);
+					visibility.setAdvancedMarkingsIsSet(true);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+					throw ex;
 				}
-				PlatformObjectVisibilities platformObjectVisibilities = new PlatformObjectVisibilities();
-				platformObjectVisibilities
-						.addToPlatformObjectWriteVisibility(ezgroup.getId());
-				platformObjectVisibilities
-						.addToPlatformObjectReadVisibility(ezgroup.getId());
-				AdvancedMarkings advancedMarkings = new AdvancedMarkings();
-				advancedMarkings
-						.setPlatformObjectVisibility(platformObjectVisibilities);
-				visibility.setAdvancedMarkings(advancedMarkings);
-				visibility.setAdvancedMarkingsIsSet(true);
-			} catch (Exception ex) {
-				ex.printStackTrace();
-				throw ex;
 			}
 			try (Connection connection = helper.getEzPostgresConnection(token)) {
 				try (PreparedStatement ps = connection
