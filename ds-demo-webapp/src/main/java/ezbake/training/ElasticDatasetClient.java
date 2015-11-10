@@ -136,32 +136,36 @@ public class ElasticDatasetClient {
 
 			Visibility visibility = new Visibility();
 			visibility.setFormalVisibility(inputVisibility);
+			
+			System.out.println(group);
 
-			groupClient = pool.getClient(EzGroupsConstants.SERVICE_NAME,
-					EzGroups.Client.class);
-			try {
-				Group ezgroup;
+			if (!group.equals("none")) {
+				groupClient = pool.getClient(EzGroupsConstants.SERVICE_NAME,
+						EzGroups.Client.class);
 				try {
-					EzSecurityToken groupsToken = securityClient
-							.fetchTokenForProxiedUser(pool
-									.getSecurityId(EzGroupsConstants.SERVICE_NAME));
-					ezgroup = groupClient.getGroup(groupsToken, group);
-				} catch (org.apache.thrift.transport.TTransportException e) {
-					throw new TException("User is not part of : " + group);
+					Group ezgroup;
+					try {
+						EzSecurityToken groupsToken = securityClient
+								.fetchTokenForProxiedUser(pool
+										.getSecurityId(EzGroupsConstants.SERVICE_NAME));
+						ezgroup = groupClient.getGroup(groupsToken, group);
+					} catch (org.apache.thrift.transport.TTransportException e) {
+						throw new TException("User is not part of : " + group);
+					}
+					PlatformObjectVisibilities platformObjectVisibilities = new PlatformObjectVisibilities();
+					platformObjectVisibilities
+							.addToPlatformObjectWriteVisibility(ezgroup.getId());
+					platformObjectVisibilities
+							.addToPlatformObjectReadVisibility(ezgroup.getId());
+					AdvancedMarkings advancedMarkings = new AdvancedMarkings();
+					advancedMarkings
+							.setPlatformObjectVisibility(platformObjectVisibilities);
+					visibility.setAdvancedMarkings(advancedMarkings);
+					visibility.setAdvancedMarkingsIsSet(true);
+				} catch (TException ex) {
+					ex.printStackTrace();
+					throw ex;
 				}
-				PlatformObjectVisibilities platformObjectVisibilities = new PlatformObjectVisibilities();
-				platformObjectVisibilities
-						.addToPlatformObjectWriteVisibility(ezgroup.getId());
-				platformObjectVisibilities
-						.addToPlatformObjectReadVisibility(ezgroup.getId());
-				AdvancedMarkings advancedMarkings = new AdvancedMarkings();
-				advancedMarkings
-						.setPlatformObjectVisibility(platformObjectVisibilities);
-				visibility.setAdvancedMarkings(advancedMarkings);
-				visibility.setAdvancedMarkingsIsSet(true);
-			} catch (TException ex) {
-				ex.printStackTrace();
-				throw ex;
 			}
 
 			doc.setVisibility(visibility);
