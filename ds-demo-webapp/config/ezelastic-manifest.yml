@@ -1,22 +1,20 @@
-
 Application:
   name: ds_demo
   # make sure to use app security id assigned by registration
   security_id: -1
-  auths: []
+
   Services:
-    -
-      type: DataSet
+   -
+      type: Thrift
       language: Java
-      service_name: ezmongo
-      database: MongoDB
+      service_name: ezelastic
       resources:
         cpu: small
         mem: small
         disk: small
       scaling:
-         number_of_instances: 1
+          number_of_instances: 1
       artifact_info:
-        bin: ezmongo.jar
+        bin: ezelastic.jar
         config: []
-      auths: []
+      database: ElasticSearch
