@@ -1,7 +1,8 @@
 Application:
   name: ds_demo
   datasets: []
-  security_id: 104592954198924385
+  # make sure to use app security id assigned by registration
+  security_id: -1
   auths: []
 
   Services:
